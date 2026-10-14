@@ -6,7 +6,7 @@ The Super Intelligent Laboratory: a redesigned creative studio inspired by the E
 
 ## Features
 
-- Responsive bot gallery with six working starters, category filters, search, bookmarks and recorded activity ranking.
+- Responsive bot gallery with six working starters, category filters, search, bookmarks and recorded activity ranking. All creations lists shared work from every maker plus your own drafts; a homepage community box highlights the latest public builds. A large top-banner Launch a coin button opens the launchpad from every page. New builds default to public after cloud saving, with a visible sharing checkbox and owner-only editing. Existing private drafts retain their visibility.
 - D1 cloud project storage with per-user ownership, share-to-gallery controls, shared project links and local backups.
 - Free starter builder is the default and requires no API key. It creates working apps from six editable starter templates.
 - Optional AI app builder uses three real Grok API requests: planning, code generation and review. It requires an xAI key and API credits; no free unauthenticated Grok API is claimed.

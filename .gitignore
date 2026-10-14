@@ -1,0 +1,7 @@
+dist/
+site.tar.gz
+node_modules/
+.env
+.env.local
+.sites-local/
+.local.sqlite*

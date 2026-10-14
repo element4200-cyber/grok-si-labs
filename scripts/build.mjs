@@ -1,0 +1,10 @@
+import {grokBotSVG} from '../src/bot-art.js';
+import {build} from 'esbuild';
+import fs from 'node:fs/promises';
+await fs.mkdir('dist/server',{recursive:true});await fs.mkdir('dist/.openai',{recursive:true});
+const browser=await build({entryPoints:['src/app.js'],bundle:true,write:false,format:'esm',target:'es2022',minify:true});
+const launch=await build({entryPoints:['src/launch.js'],bundle:true,write:false,format:'esm',target:'es2022',minify:true,define:{global:'globalThis','process.env.NODE_ENV':'"production"'}});
+let html=await fs.readFile('src/index.html','utf8');html=html.replace('<!-- SIDEBAR_BOT -->',grokBotSVG('violet','sidebar-grok')).replace('<!-- BRAND_BOT -->',grokBotSVG('pearl','brand-grok'));html=html.replace('/* STYLES */',(await fs.readFile('src/style.css','utf8'))+'\n'+(await fs.readFile('src/labs-theme.css','utf8')));
+await build({entryPoints:['worker/server.js'],bundle:true,format:'esm',platform:'browser',target:'es2022',outfile:'dist/server/index.js',define:{__HERO__:JSON.stringify((await fs.readFile('src/assets/grok-laboratory.webp')).toString('base64')),__FAVICON__:JSON.stringify(grokBotSVG('violet','favicon')),__HTML__:JSON.stringify(html),__APP__:JSON.stringify(browser.outputFiles[0].text),__LAUNCH__:JSON.stringify(launch.outputFiles[0].text)}});
+await fs.copyFile('.openai/hosting.json','dist/.openai/hosting.json');console.log('Built Grok SI Labs');
+await fs.cp('drizzle','dist/.openai/drizzle',{recursive:true});

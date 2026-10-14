@@ -1,0 +1,4 @@
+import {DatabaseSync} from 'node:sqlite';
+import fs from 'node:fs';
+export function localDB(filename=':memory:'){const sqlite=new DatabaseSync(filename);return {sqlite,prepare(sql){let values=[];const statement=sqlite.prepare(sql);return {bind(...args){values=args;return this},async first(){return statement.get(...values)||null},async all(){return {results:statement.all(...values)}},async run(){return {meta:statement.run(...values)}}}}};}
+export function migrateLocal(db){db.sqlite.exec('CREATE TABLE IF NOT EXISTS _local_migrations (name TEXT PRIMARY KEY)');const files=fs.readdirSync('drizzle').filter(x=>x.endsWith('.sql')).sort();for(const name of files){if(!db.sqlite.prepare('SELECT name FROM _local_migrations WHERE name=?').get(name)){db.sqlite.exec(fs.readFileSync('drizzle/'+name,'utf8'));db.sqlite.prepare('INSERT INTO _local_migrations (name) VALUES (?)').run(name);}}}

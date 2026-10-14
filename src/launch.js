@@ -1,5 +1,4 @@
 import {Buffer} from 'buffer';
-globalThis.Buffer=Buffer;
 import {Keypair,PublicKey,VersionedTransaction,TransactionMessage,ComputeBudgetProgram} from '@solana/web3.js';
 import {PUMP_SDK} from '@pump-fun/pump-sdk';
 import {validateToken} from './shared.js';

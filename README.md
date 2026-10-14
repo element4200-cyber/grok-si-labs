@@ -14,7 +14,7 @@ The Super Intelligent Laboratory: a redesigned creative studio inspired by the E
 - Sandboxed app previews, phone preview, source inspection, HTML export and portable JSON project import/export.
 - Phantom and Solflare wallet connection, live SOL balance and pump.fun token creation using the official `@pump-fun/pump-sdk` 4.1.0 `createV2Instruction`.
 - Metadata upload through `https://pump.fun/api/ipfs`, with existing HTTPS metadata URI support when that endpoint is unavailable.
-- Simulation, transaction review, wallet signature, submission, confirmation tracking, Solscan and pump.fun links. SOL pair, no first buy, no studio service fee. Holder rewards are optional and permanent.
+- Simulation, transaction review, wallet signature, submission, confirmation tracking, Solscan and pump.fun links. SOL pair, optional dev buy in the same atomic transaction with an exact SOL maximum and 1% slippage, optional visible priority fee, no studio service fee. Phantom signs and sends through its own connection. Pending signatures are saved immediately and can be checked from My creations. Holder rewards are optional and permanent.
 - Optional paired Windows desktop bridge for detecting and opening `C:\Program Files\Grok Bot\Grok Bot.exe`. It does not control the desktop app's chat or use undocumented private APIs.
 
 ## Start locally

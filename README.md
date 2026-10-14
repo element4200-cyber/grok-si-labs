@@ -48,3 +48,7 @@ The site is independent and is not affiliated with xAI, Engineers, or pump.fun. 
 ## Laboratory branding
 
 The UI uses GROK SI LABS and THE SUPER INTELLIGENT LABORATORY, a spherical Grok bot logo and favicon, and Solana purple (#9945FF) and mint green (#14F195). The laboratory hero depicts the same round Grok bots in lab coats with glass chemistry sets, green/purple ooze and foam. The hero was made using the built-in image generation tool and is stored in `src/assets/grok-laboratory.png`, with a transparency-preserving optimized WebP for runtime serving. The source and optimized artwork are included in `src/assets/`.
+
+## Shared token launch gallery
+
+All creations lists confirmed tokens launched through the studio with token PFP, CA, copy controls, and pump.fun/Solscan links. A D1 registry records launch intents before wallet approval and verifies confirmed Pump creation transactions or matching mint/curve accounts before public listing. Gallery receipts stay in the launching browser. No wallet private key is collected. Standalone token launches are included without requiring ChatGPT sign-in. The two historical CAs supplied by the owner are explicitly allowlisted for recovery and checked against mainnet Pump curves and Token-2022 metadata. Profile pictures come from the canonical onchain metadata URI. Existing private app sources retain their sharing settings.

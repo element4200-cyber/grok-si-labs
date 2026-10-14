@@ -1,26 +1,14 @@
+import {forwardRpc} from './rpc.js';
+import {launchesAPI} from './launches.js';
 import {projectsAPI} from './projects.js';
 const security={'X-Content-Type-Options':'nosniff','Referrer-Policy':'strict-origin-when-cross-origin','Permissions-Policy':'camera=(), microphone=(), geolocation=()','Cache-Control':'no-store'};
 const json=(body,status=200)=>new Response(JSON.stringify(body),{status,headers:{...security,'Content-Type':'application/json'}});
 const methods=new Set(['getBalance','getLatestBlockhash','getAccountInfo','getMultipleAccounts','getMinimumBalanceForRentExemption','getFeeForMessage','simulateTransaction','sendTransaction','getSignatureStatuses','getBlockHeight','getVersion']);
-async function forwardRpc(payload,env){
- const primary=env.SOLANA_RPC_URL||'https://api.mainnet-beta.solana.com';
- const publicEndpoints=new Set(['https://api.mainnet-beta.solana.com','https://solana-rpc.publicnode.com','https://solana.publicnode.com']);
- const endpoints=publicEndpoints.has(primary)?[primary,'https://rpc.solanatracker.io/public']:[primary];
- const body=JSON.stringify(payload);let last;
- for(let i=0;i<endpoints.length;i++){
-  try{
-   const upstream=await fetch(endpoints[i],{method:'POST',headers:{'Content-Type':'application/json'},body,signal:AbortSignal.timeout(20000)});
-   const text=await upstream.text();let parsed;try{parsed=JSON.parse(text);}catch{}
-   const limited=[403,429,502,503,504].includes(upstream.status)||/rate limit|too many requests|request limit|throttl/i.test(parsed?.error?.message||'');
-   last=new Response(text,{status:upstream.status,headers:{...security,'Content-Type':'application/json',...(upstream.headers.get('Retry-After')?{'Retry-After':upstream.headers.get('Retry-After')}:{})}});
-   if(!limited||i===endpoints.length-1)return last;
-  }catch(error){if(payload.method==='sendTransaction'||i===endpoints.length-1)throw error;}
- }
- return last;
-}
+
 export default {async fetch(request,env={}){const url=new URL(request.url);try{
  if(url.pathname==='/assets/grok-laboratory.webp'){const data=Uint8Array.from(atob(__HERO__),c=>c.charCodeAt(0));return new Response(data,{headers:{...security,'Content-Type':'image/webp','Cache-Control':'public, max-age=3600'}});}
  if(url.pathname==='/favicon.svg')return new Response(__FAVICON__,{headers:{...security,'Content-Type':'image/svg+xml','Cache-Control':'public, max-age=3600'}});
+ if(url.pathname.startsWith('/api/launches'))return await launchesAPI(request,env,url);
  if(url.pathname.startsWith('/api/projects'))return await projectsAPI(request,env,url);
  if(url.pathname==='/api/status')return json({signedIn:!!request.headers.get('oai-authenticated-user-id'),grokConfigured:!!env.GROK_API_KEY,model:env.GROK_MODEL||'grok-4.7',network:'mainnet-beta'});
  if(url.pathname==='/api/rpc'&&request.method==='POST'){if(Number(request.headers.get('content-length'))>200000)return json({error:'Request too large'},413);const payload=await request.json();if(!methods.has(payload.method)||Array.isArray(payload))return json({error:'RPC method not supported'},400);return await forwardRpc(payload,env);}

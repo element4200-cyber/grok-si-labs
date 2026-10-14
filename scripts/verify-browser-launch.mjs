@@ -33,10 +33,12 @@ try{
  assert.equal(prepared.user,wallet.publicKey.toString());
  assert.ok(calls.includes('simulateTransaction'));
  assert.ok(!calls.includes('sendTransaction'),'Preparation must not submit a transaction');
+ prepared.lastValidBlockHeight=0; // A user may review an old preview before signing.
  // Mock wallet approval and submission; nothing leaves this process.
  wallet.signTransaction=async tx=>{tx.signatures[0].fill(1);return tx;};
  const result=await module.namespace.signAndSend(prepared,wallet,()=>{});
  assert.equal(result.signature,'mock-signature');
+ assert.equal(result.mint,prepared.mint);
  assert.equal(calls.at(-1),'getSignatureStatuses');
  console.log('Browser bundle imports, prepares, serializes and completes mocked confirmation without Node globals.');
 }catch(error){console.error(error.name+': '+error.message);process.exitCode=1;}

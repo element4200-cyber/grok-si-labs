@@ -1,3 +1,10 @@
 export const escapeHTML=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+export function solToLamports(value,label='SOL amount'){
+ const text=String(value??'0').trim();
+ if(!/^\d+(?:\.\d{1,9})?$/.test(text))throw Error(label+' must be a non-negative SOL amount with at most 9 decimal places.');
+ const [whole,fraction='']=text.split('.');const amount=BigInt(whole)*1000000000n+BigInt(fraction.padEnd(9,'0'));
+ if(amount>BigInt(Number.MAX_SAFE_INTEGER))throw Error(label+' is too large.');
+ return amount.toString();
+}
 export function validateToken(data){const name=String(data.name||'').trim(),symbol=String(data.symbol||'').trim();if(!name||[...name].length>32)throw Error('Token name must contain 1–32 characters.');if(!/^[A-Za-z0-9]{1,13}$/.test(symbol))throw Error('Ticker must contain 1–13 letters or numbers.');if(!data.description?.trim())throw Error('Add a description for your token.');if(data.uri){const u=new URL(data.uri);if(u.protocol!=='https:'||new TextEncoder().encode(data.uri).length>200)throw Error('Metadata URL must use HTTPS and be no more than 200 bytes.');}for(const k of ['website','twitter','telegram'])if(data[k]){const u=new URL(data[k]);if(u.protocol!=='https:')throw Error('Social links must start with https://.');}return {...data,name,symbol:symbol.toUpperCase()};}
 export function sandboxHTML(html){const policy=`<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: blob:; font-src data:; connect-src 'none'; form-action 'none'; base-uri 'none'">`;return '<!doctype html>'+policy+html.replace(/<!doctype[^>]*>/i,'');}

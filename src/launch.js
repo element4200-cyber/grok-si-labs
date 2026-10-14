@@ -21,17 +21,50 @@ export async function rpc(method,params=[],{wait=ms=>new Promise(resolve=>setTim
   await wait(delay);
  }
 }
-export async function prepareLaunch(input,wallet,onStatus=()=>{}){const request=(method,params)=>rpc(method,params,{onRetry:onStatus});const data=validateToken(input);if(!data.uri)throw Error('A metadata URL is required.');const user=new PublicKey(wallet.publicKey.toString());const mint=Keypair.generate();const ix=await PUMP_SDK.createV2Instruction({mint:mint.publicKey,name:data.name,symbol:data.symbol,uri:data.uri,creator:user,user,mayhemMode:false,holderReward:!!data.holderReward});const {blockhash,lastValidBlockHeight}= (await request('getLatestBlockhash',[{commitment:'confirmed'}])).value;const message=new TransactionMessage({payerKey:user,recentBlockhash:blockhash,instructions:[ComputeBudgetProgram.setComputeUnitLimit({units:300000}),ix]}).compileToV0Message();const tx=new VersionedTransaction(message);tx.sign([mint]);const simulation=await request('simulateTransaction',[Buffer.from(tx.serialize()).toString('base64'),{encoding:'base64',sigVerify:false,commitment:'confirmed'}]);if(simulation.value.err)throw Error('Launch simulation failed: '+JSON.stringify(simulation.value.err)+'. Check your SOL balance and metadata.');const fee=(await request('getFeeForMessage',[Buffer.from(message.serialize()).toString('base64'),{commitment:'confirmed'}])).value;return {tx,mint:mint.publicKey.toBase58(),user:user.toBase58(),data,fee:fee??10000,blockhash,lastValidBlockHeight,units:simulation.value.unitsConsumed};}
+const launchSigners=new WeakMap();
+export async function prepareLaunch(input,wallet,onStatus=()=>{}){
+ const request=(method,params)=>rpc(method,params,{onRetry:onStatus});
+ const data=validateToken(input);
+ if(!data.uri)throw Error('A metadata URL is required.');
+ const user=new PublicKey(wallet.publicKey.toString());
+ const mint=Keypair.generate();
+ const ix=await PUMP_SDK.createV2Instruction({mint:mint.publicKey,name:data.name,symbol:data.symbol,uri:data.uri,creator:user,user,mayhemMode:false,holderReward:!!data.holderReward});
+ const {blockhash,lastValidBlockHeight}=(await request('getLatestBlockhash',[{commitment:'confirmed'}])).value;
+ const message=new TransactionMessage({payerKey:user,recentBlockhash:blockhash,instructions:[ComputeBudgetProgram.setComputeUnitLimit({units:300000}),ix]}).compileToV0Message();
+ const tx=new VersionedTransaction(message);tx.sign([mint]);
+ // A throttled simulation can outlive the preview hash; let the RPC replace it.
+ const simulation=await request('simulateTransaction',[Buffer.from(tx.serialize()).toString('base64'),{encoding:'base64',sigVerify:false,replaceRecentBlockhash:true,commitment:'confirmed'}]);
+ if(simulation.value.err)throw Error('Launch simulation failed: '+JSON.stringify(simulation.value.err)+'. Check your SOL balance and metadata.');
+ const prepared={tx,mint:mint.publicKey.toBase58(),user:user.toBase58(),data,fee:simulation.value.fee??5000*message.header.numRequiredSignatures,blockhash,lastValidBlockHeight,units:simulation.value.unitsConsumed};
+ // Retain this mint's signer only in memory so refreshing never changes the coin.
+ launchSigners.set(prepared,mint);
+ return prepared;
+}
 export function encodeBase58(bytes){const alphabet='123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';let n=0n;for(const b of bytes)n=n*256n+BigInt(b);let out='';while(n>0n){out=alphabet[Number(n%58n)]+out;n/=58n}for(const b of bytes){if(b!==0)break;out='1'+out}return out;}
 export async function signAndSend(prepared,wallet,onStatus){
  const request=(method,params)=>rpc(method,params,{onRetry:onStatus});
  if(wallet.publicKey?.toString()!==prepared.user)throw Error('Wallet changed. Prepare this launch again.');
- if(await request('getBlockHeight',[{commitment:'confirmed'}])>prepared.lastValidBlockHeight)throw Error('The launch preview expired. Prepare it again.');
- const originalMessage=Buffer.from(prepared.tx.message.serialize()).toString('base64');
- onStatus('Review and approve the token creation in your wallet.');
- const signed=await wallet.signTransaction(prepared.tx);
- if(Buffer.from(signed.message.serialize()).toString('base64')!==originalMessage)throw Error('Wallet returned a different transaction. Prepare the launch again.');
- if(!signed.signatures[0]?.some(b=>b!==0))throw Error('Wallet did not sign the transaction.');
+ const mintSigner=launchSigners.get(prepared);
+ if(!mintSigner)throw Error('This launch session is unavailable. Prepare the launch again.');
+ let signed;
+ for(let attempt=0;attempt<2;attempt++){
+  if(wallet.publicKey?.toString()!==prepared.user)throw Error('Wallet changed. Prepare this launch again.');
+  onStatus('Refreshing your launch transaction…');
+  const latest=(await request('getLatestBlockhash',[{commitment:'confirmed'}])).value;
+  prepared.tx.message.recentBlockhash=latest.blockhash;
+  prepared.tx=new VersionedTransaction(prepared.tx.message);
+  prepared.tx.sign([mintSigner]);
+  prepared.blockhash=latest.blockhash;prepared.lastValidBlockHeight=latest.lastValidBlockHeight;
+  const originalMessage=Buffer.from(prepared.tx.message.serialize()).toString('base64');
+  onStatus('Review and approve the token creation in your wallet.');
+  signed=await wallet.signTransaction(prepared.tx);
+  if(Buffer.from(signed.message.serialize()).toString('base64')!==originalMessage)throw Error('Wallet returned a different transaction. Prepare the launch again.');
+  if(!signed.signatures[0]?.some(b=>b!==0))throw Error('Wallet did not sign the transaction.');
+  if(await request('getBlockHeight',[{commitment:'confirmed'}])<=prepared.lastValidBlockHeight)break;
+  signed=null;
+  if(attempt===1)throw Error('Wallet approval expired before submission. Click Review & sign again for a fresh transaction.');
+  onStatus('The wallet approval window elapsed. Refreshing the same coin; please approve again.');
+ }
  let signature=encodeBase58(signed.signatures[0]);
  try{
   onStatus('Submitting your signed transaction…');
